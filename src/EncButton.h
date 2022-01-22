@@ -101,6 +101,9 @@ struct integral_constant {
 using true_type = integral_constant<bool, true>;
 using false_type = integral_constant<bool, false>;
 
+template <uint8_t V>
+using u8_constant = integral_constant<uint8_t, V>;
+
 template <bool B, class T, class F>
 struct conditional {
     typedef T type;
@@ -125,6 +128,7 @@ struct enable_if<true, T> {
 
 template <bool B, class T = void>
 using enable_if_t = typename enable_if<B, T>::type;
+
 /////////////////////////////////////////
 // template <typename T>
 // struct tag {
@@ -246,12 +250,12 @@ using enable_if_t = typename enable_if<B, T>::type;
 }; // xr
 
 template <class T>
-struct CbDummu : xr::false_type {
-    inline void checkCallback() {};
+struct Dummy {
+    inline void checkCallback() { }
 };
 
 template <class T>
-struct Callbacks : xr::true_type {
+struct Callbacks {
     using Callback = void (*)();
     // подключить обработчик
     void attach(EbCallback type, Callback handler) { _callbacks[type] = handler; }
@@ -268,23 +272,23 @@ struct Callbacks : xr::true_type {
     // ===================================== CALLBACK =====================================
     // проверить callback, чтобы не дёргать в прерывании
     inline void checkCallback() {
-        T* eb = static_cast<T*>(this);
-        if (eb->turn())
-            eb->exec(0);
-        if (eb->turnH())
-            eb->exec(12);
-        if (eb->EBState > 0 && eb->EBState <= 8)
-            eb->exec(eb->EBState);
-        if (eb->release())
-            eb->exec(10);
-        if (eb->hold())
-            eb->exec(11);
-        if (eb->template checkFlag<T::ClicksGet>()) {
-            eb->exec(9);
-            if (eb->clicks == eb->_amount)
-                eb->exec(13);
+        T* d = static_cast<T*>(this);
+        if (d->turn())
+            d->exec(0);
+        if (d->turnH())
+            d->exec(12);
+        if (d->EBState > 0 && d->EBState <= 8)
+            d->exec(d->EBState);
+        if (d->release())
+            d->exec(10);
+        if (d->hold())
+            d->exec(11);
+        if (d->template checkFlag<T::ClicksGet>()) {
+            d->exec(9);
+            if (d->clicks == d->_amount)
+                d->exec(13);
         }
-        eb->EBState = 0;
+        d->EBState = 0;
     }
 
 protected:
@@ -297,25 +301,103 @@ protected:
     Callback _callbacks[14] {};
 };
 
-// константы
+template <uint8_t N, uint8_t Pin, uint8_t... Pins>
+uint8_t pin() { return N == 0 ? Pin : pin<N - 1, Pins...>(); }
+
+template <uint8_t N>
+uint8_t pin() { return 255; }
+
+/*template <typename T, uint8_t... Pins>
+struct ticker {
+    uint8_t tick() {
+        T* d = static_cast<T*>(this);
+        return tickISR(), d->EBState;
+    }
+
+    //    template <xr::enable_if_t<sizeof...(Pins) == 3, uint8_t> = 3>
+    uint8_t tickISR() {
+        T* d = static_cast<T*>(this);
+        if (d->_isrFlag)
+            return d->EBState;
+        d->_isrFlag = 1;
+
+        const uint8_t state = d->fastRead(pin<0, Pins...>()) | (d->fastRead(pin<1, Pins...>()) << 1);
+        d->poolEnc(state);
+
+        d->_btnState = d->fastRead(pin<2, Pins...>());
+        d->poolBtn();
+
+        d->_isrFlag = 0;
+        return d->EBState;
+    }
+
+    //    template <xr::enable_if_t<sizeof...(Pins) == 2, uint8_t> = 2>
+    //    uint8_t tickISR() {
+    //        T* d = static_cast<T*>(this);
+    //        if (d->_isrFlag)
+    //            return d->EBState;
+    //        d->_isrFlag = 1;
+
+    //        const uint8_t state = d->fastRead(pin<0, Pins...>) | (d->fastRead(pin<1, Pins...>) << 1);
+    //        d->poolEnc(state);
+
+    //        d->_isrFlag = 0;
+    //        return d->EBState;
+    //    }
+
+    //    template <xr::enable_if_t<sizeof...(Pins) == 1, uint8_t> = 1>
+    //    uint8_t tickISR() {
+    //        T* d = static_cast<T*>(this);
+    //        if (d->_isrFlag)
+    //            return d->EBState;
+    //        d->_isrFlag = 1;
+
+    //        d->_btnState = fastRead(pin<0, Pins...>);
+    //        d->poolBtn();
+
+    //        d->_isrFlag = 0;
+    //        return d->EBState;
+    //    }
+};*/
 
 struct EB_TICK : xr::false_type {
-    template <typename T>
-    using type = CbDummu<T>;
+    template <typename T, uint8_t... Pins>
+    using type = Dummy<T>;
 };
 
 struct EB_CALLBACK : xr::true_type {
+    template <typename T, uint8_t... Pins>
+    using type = Callbacks<T>;
+};
+
+struct VIRT_BTN : xr::u8_constant<1> {
+    template <typename T>
+    using type = Dummy<T>;
+};
+
+struct VIRT_ENC : xr::u8_constant<2> {
+    template <typename T>
+    using type = Dummy<T>;
+};
+
+struct VIRT_ENCBTN : xr::u8_constant<3> {
+    template <typename T>
+    using type = Dummy<T>;
+};
+
+struct VIRT_BTN_CALLBACK : xr::u8_constant<1> {
     template <typename T>
     using type = Callbacks<T>;
 };
 
-enum K : uint8_t {
+struct VIRT_ENC_CALLBACK : xr::u8_constant<2> {
+    template <typename T>
+    using type = Callbacks<T>;
+};
 
-    EB_NO_PIN = 255,
-
-    VIRT_ENC = 254,
-    VIRT_ENCBTN = 253,
-    VIRT_BTN = 252,
+struct VIRT_ENCBTN_CALLBACK : xr::u8_constant<3> {
+    template <typename T>
+    using type = Callbacks<T>;
 };
 
 // ===================================== CLASS =====================================
@@ -355,6 +437,8 @@ class EncButton : public CbMode::template type<EncButton<CbMode, Pins...>> {
     };
 
 public:
+    using type = EncButton;
+
     // можно указать режим работы пина
     EncButton(const uint8_t mode = INPUT_PULLUP) {
         if (sizeof...(Pins) && mode == INPUT_PULLUP)
@@ -399,15 +483,24 @@ public:
     // ===================================== TICK =====================================
     // тикер, вызывать как можно чаще
     // вернёт отличное от нуля значение, если произошло какое то событие
-    uint8_t tick(uint8_t s1 = 0, uint8_t s2 = 0, uint8_t key = 0) {
-        tickISR(s1, s2, key);
-        if (CB::value)
-            CB::checkCallback();
+    template <xr::enable_if_t<sizeof...(Pins) == 3, bool> = true>
+    uint8_t tick() {
+        tickISR();
+        CB::checkCallback();
+        return EBState;
+    }
+
+    template <xr::enable_if_t<sizeof...(Pins) == 2, bool> = true>
+    uint8_t tick() {
+        tickISR();
+        CB::checkCallback();
         return EBState;
     }
 
     // тикер специально для прерывания, не проверяет коллбэки
-    uint8_t tickISR(uint8_t s1 = 0, uint8_t s2 = 0, uint8_t key = 0) {
+
+    template <xr::enable_if_t<sizeof...(Pins) == 3, bool> = true>
+    uint8_t tickISR() {
         if (!_isrFlag) {
             _isrFlag = 1;
 
@@ -592,6 +685,7 @@ private:
 
     // ===================================== POOL BTN =====================================
     void poolBtn() {
+        _btnState ^= readFlag(Btnlevel);
         uint32_t thisMls = millis();
         uint32_t debounce = thisMls - _debTimer;
         if (_btnState) {                     // кнопка нажата
