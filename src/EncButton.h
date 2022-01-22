@@ -65,7 +65,7 @@
 #define EB_CLICK 400
 #endif
 
-//#define EB_BETTER_ENC     // точный алгоритм отработки энкодера (можно задефайнить в скетче)
+#define EB_BETTER_ENC // точный алгоритм отработки энкодера (можно задефайнить в скетче)
 
 #ifndef nullptr
 #define nullptr NULL
@@ -88,6 +88,7 @@ enum EbCallback : uint8_t {
     // clicks amount 13
 };
 
+namespace xr {
 template <class T, T v>
 struct integral_constant {
     static constexpr T value = v;
@@ -113,13 +114,144 @@ struct conditional<false, T, F> {
 template <bool B, class T, class F>
 using conditional_t = typename conditional<B, T, F>::type;
 
+template <bool B, class T = void>
+struct enable_if {
+};
+
 template <class T>
-struct CbDummu : false_type {
+struct enable_if<true, T> {
+    typedef T type;
+};
+
+template <bool B, class T = void>
+using enable_if_t = typename enable_if<B, T>::type;
+/////////////////////////////////////////
+// template <typename T>
+// struct tag {
+//     using type = T;
+// };
+
+// template <size_t... Ints>
+// struct index_sequence {
+//     using type = index_sequence;
+//     using value_type = size_t;
+//     static constexpr size_t size() noexcept { return sizeof...(Ints); }
+// };
+
+//// --------------------------------------------------------------
+
+// template <class Sequence1, class Sequence2>
+// struct _merge_and_renumber;
+
+// template <size_t... I1, size_t... I2>
+// struct _merge_and_renumber<index_sequence<I1...>, index_sequence<I2...>>
+//     : index_sequence<I1..., (sizeof...(I1) + I2)...> { };
+
+//// --------------------------------------------------------------
+
+// template <size_t N>
+// struct make_index_sequence
+//     : _merge_and_renumber<typename make_index_sequence<N / 2>::type,
+//           typename make_index_sequence<N - N / 2>::type> { };
+
+// template <>
+// struct make_index_sequence<0> : index_sequence<> { };
+// template <>
+// struct make_index_sequence<1> : index_sequence<0> { };
+// namespace impl {
+//     constexpr void adl_ViewBase() { } // A dummy ADL target.
+
+//    template <typename D, size_t I>
+//    struct BaseViewer {
+//#if defined(__GNUC__) && !defined(__clang__)
+//#pragma GCC diagnostic push
+//#pragma GCC diagnostic ignored "-Wnon-template-friend"
+//#endif
+//        friend constexpr auto adl_ViewBase(BaseViewer);
+//#if defined(__GNUC__) && !defined(__clang__)
+//#pragma GCC diagnostic pop
+//#endif
+//    };
+
+//    template <typename D, size_t I, typename B>
+//    struct BaseWriter {
+//        friend constexpr auto adl_ViewBase(BaseViewer<D, I>) { return tag<B> {}; }
+//    };
+
+//    template <typename D, typename Unique, size_t I = 0, typename = void>
+//    struct NumBases : integral_constant<size_t, I> {
+//    };
+
+//    template <typename D, typename Unique, size_t I>
+//    struct NumBases<D, Unique, I, decltype(adl_ViewBase(BaseViewer<D, I> {}), void())> : integral_constant<size_t, NumBases<D, Unique, I + 1, void>::value> {
+//    };
+
+//    template <typename D, typename B>
+//    struct BaseInserter : BaseWriter<D, NumBases<D, B>::value, B> {
+//    };
+
+//    template <typename T>
+//    constexpr void adl_RegisterBases(void*) { } // A dummy ADL target.
+
+//    template <typename T>
+//    struct RegisterBases : decltype(adl_RegisterBases<T>((T*)nullptr), tag<void>()) {
+//    };
+
+//    template <typename T, typename I>
+//    struct BaseListLow {
+//    };
+
+//    template <typename T, size_t... I>
+//    struct BaseListLow<T, index_sequence<I...>> {
+//        static constexpr type_list<decltype(adl_ViewBase(BaseViewer<T, I> {}))...> helper() { }
+//        using type = decltype(helper());
+//    };
+
+//    template <typename T>
+//    struct BaseList : BaseListLow<T, make_index_sequence<(impl::RegisterBases<T> {}, NumBases<T, void>::value)>> {
+//    };
+//}
+
+// template <typename T>
+// using base_list = typename impl::BaseList<T>::type;
+
+// template <typename T>
+// struct Base {
+//     template <typename D, typename impl::BaseInserter<D, T>::nonExistent = nullptr>
+//     friend constexpr void adl_RegisterBases(void*) { }
+// };
+
+// struct A : Base<A> {
+// };
+// struct B : Base<B>, A {
+// };
+// struct C : Base<C> {
+// };
+// struct D : Base<D>, B, C {
+// };
+
+// template <typename T>
+// void printType() {
+//#ifndef _MSC_VER
+//     cout << __PRETTY_FUNCTION__ << '\n';
+//#else
+//     cout << __FUNCSIG__ << '\n';
+//#endif
+// };
+// void test() {
+//     static_assert(base_list<D>::size == 4);
+//     printType<base_list<D>>(); // typeList<tag<A>, tag<B>, tag<C>, tag<D>>, order may vary
+// }
+
+}; // xr
+
+template <class T>
+struct CbDummu : xr::false_type {
     inline void checkCallback() {};
 };
 
 template <class T>
-struct Callbacks : true_type {
+struct Callbacks : xr::true_type {
     using Callback = void (*)();
     // подключить обработчик
     void attach(EbCallback type, Callback handler) { _callbacks[type] = handler; }
@@ -167,9 +299,17 @@ protected:
 
 // константы
 
+struct EB_TICK : xr::false_type {
+    template <typename T>
+    using type = CbDummu<T>;
+};
+
+struct EB_CALLBACK : xr::true_type {
+    template <typename T>
+    using type = Callbacks<T>;
+};
+
 enum K : uint8_t {
-    EB_TICK = 0,
-    EB_CALLBACK = 1,
 
     EB_NO_PIN = 255,
 
@@ -178,19 +318,10 @@ enum K : uint8_t {
     VIRT_BTN = 252,
 };
 
-#ifdef EB_BETTER_ENC
-static const int8_t _EB_DIR[] = {
-    0, -1, 1, 0,
-    1, 0, 0, -1,
-    -1, 0, 0, 1,
-    0, 1, -1, 0
-};
-#endif
-
 // ===================================== CLASS =====================================
-template <uint8_t CbMode, uint8_t S1 = EB_NO_PIN, uint8_t S2 = EB_NO_PIN, uint8_t KEY = EB_NO_PIN>
-class EncButton : public conditional_t<CbMode, Callbacks<EncButton<CbMode, S1, S2, KEY>>, CbDummu<EncButton<CbMode, S1, S2, KEY>>> {
-    using CB = conditional_t<CbMode, Callbacks<EncButton>, CbDummu<EncButton>>;
+template <typename CbMode, uint8_t... Pins>
+class EncButton : public CbMode::template type<EncButton<CbMode, Pins...>> {
+    using CB = typename CbMode::template type<EncButton>;
     friend CB;
 
     enum Flags : uint8_t {
@@ -226,25 +357,26 @@ class EncButton : public conditional_t<CbMode, Callbacks<EncButton<CbMode, S1, S
 public:
     // можно указать режим работы пина
     EncButton(const uint8_t mode = INPUT_PULLUP) {
-        if (S1 < 252 && mode == INPUT_PULLUP)
+        if (sizeof...(Pins) && mode == INPUT_PULLUP)
             pullUp();
         setButtonLevel(LOW);
     }
 
     // подтянуть пины внутренней подтяжкой
     void pullUp() {
-        if (S1 < 252) {            // реальное устройство
-            if (S2 == EB_NO_PIN) { // обычная кнопка
-                pinMode(S1, INPUT_PULLUP);
-            } else if (KEY == EB_NO_PIN) { // энк без кнопки
-                pinMode(S1, INPUT_PULLUP);
-                pinMode(S2, INPUT_PULLUP);
-            } else { // энк с кнопкой
-                pinMode(S1, INPUT_PULLUP);
-                pinMode(S2, INPUT_PULLUP);
-                pinMode(KEY, INPUT_PULLUP);
-            }
-        }
+        (pinMode(Pins, INPUT_PULLUP), ...);
+        //        if (S1 < 252) { // реальное устройство
+        //            if (S2 == EB_NO_PIN) { // обычная кнопка
+        //                pinMode(S1, INPUT_PULLUP);
+        //            } else if (KEY == EB_NO_PIN) { // энк без кнопки
+        //                pinMode(S1, INPUT_PULLUP);
+        //                pinMode(S2, INPUT_PULLUP);
+        //            } else { // энк с кнопкой
+        //                pinMode(S1, INPUT_PULLUP);
+        //                pinMode(S2, INPUT_PULLUP);
+        //                pinMode(KEY, INPUT_PULLUP);
+        //            }
+        //        }
     }
 
     // установить таймаут удержания кнопки для isHold(), мс (до 30 000)
@@ -279,31 +411,31 @@ public:
         if (!_isrFlag) {
             _isrFlag = 1;
 
-            // обработка энка (компилятор вырежет блок если не используется)
-            // если объявлены два пина или выбран вирт. энкодер или энкодер с кнопкой
-            if ((S1 < 252 && S2 < 252) || S1 == VIRT_ENC || S1 == VIRT_ENCBTN) {
-                uint8_t state;
-                if (S1 >= 252)
-                    state = s1 | (s2 << 1); // получаем код
-                else
-                    state = fastRead(S1) | (fastRead(S2) << 1); // получаем код
-                poolEnc(state);
-            }
+            //            // обработка энка (компилятор вырежет блок если не используется)
+            //            // если объявлены два пина или выбран вирт. энкодер или энкодер с кнопкой
+            //            if ((S1 < 252 && S2 < 252) || S1 == VIRT_ENC || S1 == VIRT_ENCBTN) {
+            //                uint8_t state;
+            //                if (S1 >= 252)
+            //                    state = s1 | (s2 << 1); // получаем код
+            //                else
+            //                    state = fastRead(S1) | (fastRead(S2) << 1); // получаем код
+            //                poolEnc(state);
+            //            }
 
-            // обработка кнопки (компилятор вырежет блок если не используется)
-            // если S2 не указан (кнопка) или указан KEY или выбран вирт. энкодер с кнопкой или кнопка
-            if ((S1 < 252 && S2 == EB_NO_PIN) || KEY != EB_NO_PIN || S1 == VIRT_BTN || S1 == VIRT_ENCBTN) {
-                if (S1 < 252 && S2 == EB_NO_PIN)
-                    _btnState = fastRead(S1); // обычная кнопка
-                if (KEY != EB_NO_PIN)
-                    _btnState = fastRead(KEY); // энк с кнопкой
-                if (S1 == VIRT_BTN)
-                    _btnState = s1; // вирт кнопка
-                if (S1 == VIRT_ENCBTN)
-                    _btnState = key;             // вирт энк с кнопкой
-                _btnState ^= readFlag(Btnlevel); // инверсия кнопки
-                poolBtn();
-            }
+            //            // обработка кнопки (компилятор вырежет блок если не используется)
+            //            // если S2 не указан (кнопка) или указан KEY или выбран вирт. энкодер с кнопкой или кнопка
+            //            if ((S1 < 252 && S2 == EB_NO_PIN) || KEY != EB_NO_PIN || S1 == VIRT_BTN || S1 == VIRT_ENCBTN) {
+            //                if (S1 < 252 && S2 == EB_NO_PIN)
+            //                    _btnState = fastRead(S1); // обычная кнопка
+            //                if (KEY != EB_NO_PIN)
+            //                    _btnState = fastRead(KEY); // энк с кнопкой
+            //                if (S1 == VIRT_BTN)
+            //                    _btnState = s1; // вирт кнопка
+            //                if (S1 == VIRT_ENCBTN)
+            //                    _btnState = key;             // вирт энк с кнопкой
+            //                _btnState ^= readFlag(Btnlevel); // инверсия кнопки
+            //                poolBtn();
+            //            }
         }
         _isrFlag = 0;
         return EBState;
@@ -387,7 +519,14 @@ private:
 
     // ===================================== POOL ENC =====================================
     void poolEnc(uint8_t state) {
-#ifdef EB_BETTER_ENC
+#ifdef EB_BETTER_ENC_
+        static constexpr int8_t _EB_DIR[] = {
+            0, -1, 1, 0,
+            1, 0, 0, -1,
+            -1, 0, 0, 1,
+            0, 1, -1, 0
+        };
+
         if (_prev != state) {
             _ecount += _EB_DIR[state | (_prev << 2)]; // сдвиг внутреннего счётчика
             _prev = state;
@@ -399,26 +538,26 @@ private:
 #endif
                 EBState = (_ecount < 0) ? 1 : 2;
                 _ecount = 0;
-                if (S2 == EB_NO_PIN || KEY != EB_NO_PIN) { // энкодер с кнопкой
-                    if (!_EB_readFlag(Hold) && (_btnState || _EB_readFlag(EncButtonHold)))
+                if (sizeof...(Pins) == 3) { // энкодер с кнопкой
+                    if (!readFlag(Hold) && (_btnState || readFlag(EncButtonHold)))
                         EBState += 2; // если кнопка не "удерживается"
                 }
                 _dir = (EBState & 1) ? -1 : 1; // направление
                 counter += _dir;               // счётчик
                 if (EBState <= 2)
-                    _EB_setFlag(EncTurn); // флаг поворота для юзера
+                    setFlag(EncTurn); // флаг поворота для юзера
                 else if (EBState <= 4)
-                    _EB_setFlag(EncTurnHolded); // флаг нажатого поворота для юзера
+                    setFlag(EncTurnHolded); // флаг нажатого поворота для юзера
                 if (millis() - _debTimer < EB_FAST)
-                    _EB_setFlag(EncFast); // быстрый поворот
+                    setFlag(EncFast); // быстрый поворот
                 else
-                    _EB_clrFlag(EncFast); // обычный поворот
+                    clrFlag(EncFast); // обычный поворот
                 _debTimer = millis();
             }
         }
 #else
         if (_encRST && state == 0b11) {                              // ресет и энк защёлкнул позицию
-            if (S2 == EB_NO_PIN || KEY != EB_NO_PIN) {               // энкодер с кнопкой
+            if (sizeof...(Pins) == 3) {                              // энкодер с кнопкой
                 if ((_prev == 1 || _prev == 2) && !readFlag(Hold)) { // если кнопка не "удерживается" и энкодер в позиции 1 или 2
                     EBState = _prev;
                     if (_btnState || readFlag(EncButtonHold))
