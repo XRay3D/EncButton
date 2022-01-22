@@ -52,11 +52,23 @@ void loop()
     enc.tick(); // обработка всё равно здесь
 }
 
-
 /*
 
 Начальное состояние
 Data:        332 bytes (16.2% Full)
 Program:    4710 bytes (14.4% Full)
+
+вынес функциональность солбэков в отдельный класс
+Data:        332 bytes (16.2% Full)
+Program:    4710 bytes (14.4% Full)
+
+флаг макро сделал встроенными методами
+Data:        332 bytes (16.2% Full)
+Program:    4676 bytes (14.3% Full)
+
+заменил магические константы на enum Flags / State
+Data:        332 bytes (16.2% Full)
+Program:    4610 bytes (14.1% Full)
+
 
 */

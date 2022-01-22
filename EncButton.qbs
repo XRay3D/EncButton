@@ -34,7 +34,7 @@ CppApplication {
             '/**/*.c',
             '/**/*.cpp',
             '/**/*.h',
-            '/**/*.ino',
+            //'/**/*.ino',
         ]
         excludeFiles: [
             '/TestApp/**',
