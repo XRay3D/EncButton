@@ -81,7 +81,7 @@
 #define EB_CLICK _EB_CLICK
 #endif
 
-enum eb_callback {
+enum eb_callback :uint8_t{
     TURN_HANDLER,       // 0
     LEFT_HANDLER,       // 1
     RIGHT_HANDLER,      // 2
