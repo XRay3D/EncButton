@@ -47,6 +47,7 @@
 
 // =========== НЕ ТРОГАЙ ============
 #include <Arduino.h>
+#include <stdint.h>
 
 // ========= НАСТРОЙКИ (можно передефайнить из скетча) ==========
 #ifndef EB_FAST // таймаут быстрого поворота
@@ -65,7 +66,7 @@
 #define EB_CLICK 400
 #endif
 
-#define EB_BETTER_ENC // точный алгоритм отработки энкодера (можно задефайнить в скетче)
+//#define EB_BETTER_ENC // точный алгоритм отработки энкодера (можно задефайнить в скетче)
 
 #ifndef nullptr
 #define nullptr NULL
@@ -85,383 +86,140 @@ enum EbCallback : uint8_t {
     RELEASE_HANDLER, // 10
     HOLD_HANDLER,    // 11
     TURN_H_HANDLER,  // 12
-    // clicks amount 13
+    // CLICKS_AMOUNT 13
 };
 
 namespace xr {
-template <class T, T v>
-struct integral_constant {
-    static constexpr T value = v;
-    using value_type = T;
-    using type = integral_constant; // using injected-class-name
-    constexpr operator value_type() const noexcept { return value; }
-    constexpr value_type operator()() const noexcept { return value; }
-};
-
-using true_type = integral_constant<bool, true>;
-using false_type = integral_constant<bool, false>;
-
-template <uint8_t V>
-using u8_constant = integral_constant<uint8_t, V>;
-
-template <bool B, class T, class F>
-struct conditional {
-    typedef T type;
-};
-
-template <class T, class F>
-struct conditional<false, T, F> {
-    typedef F type;
-};
-
-template <bool B, class T, class F>
-using conditional_t = typename conditional<B, T, F>::type;
-
-template <bool B, class T = void>
-struct enable_if {
-};
-
-template <class T>
-struct enable_if<true, T> {
-    typedef T type;
-};
-
-template <bool B, class T = void>
-using enable_if_t = typename enable_if<B, T>::type;
-
-/////////////////////////////////////////
-// template <typename T>
-// struct tag {
-//     using type = T;
-// };
-
-// template <size_t... Ints>
-// struct index_sequence {
-//     using type = index_sequence;
-//     using value_type = size_t;
-//     static constexpr size_t size() noexcept { return sizeof...(Ints); }
-// };
-
-//// --------------------------------------------------------------
-
-// template <class Sequence1, class Sequence2>
-// struct _merge_and_renumber;
-
-// template <size_t... I1, size_t... I2>
-// struct _merge_and_renumber<index_sequence<I1...>, index_sequence<I2...>>
-//     : index_sequence<I1..., (sizeof...(I1) + I2)...> { };
-
-//// --------------------------------------------------------------
-
-// template <size_t N>
-// struct make_index_sequence
-//     : _merge_and_renumber<typename make_index_sequence<N / 2>::type,
-//           typename make_index_sequence<N - N / 2>::type> { };
-
-// template <>
-// struct make_index_sequence<0> : index_sequence<> { };
-// template <>
-// struct make_index_sequence<1> : index_sequence<0> { };
-// namespace impl {
-//     constexpr void adl_ViewBase() { } // A dummy ADL target.
-
-//    template <typename D, size_t I>
-//    struct BaseViewer {
-//#if defined(__GNUC__) && !defined(__clang__)
-//#pragma GCC diagnostic push
-//#pragma GCC diagnostic ignored "-Wnon-template-friend"
-//#endif
-//        friend constexpr auto adl_ViewBase(BaseViewer);
-//#if defined(__GNUC__) && !defined(__clang__)
-//#pragma GCC diagnostic pop
-//#endif
-//    };
-
-//    template <typename D, size_t I, typename B>
-//    struct BaseWriter {
-//        friend constexpr auto adl_ViewBase(BaseViewer<D, I>) { return tag<B> {}; }
-//    };
-
-//    template <typename D, typename Unique, size_t I = 0, typename = void>
-//    struct NumBases : integral_constant<size_t, I> {
-//    };
-
-//    template <typename D, typename Unique, size_t I>
-//    struct NumBases<D, Unique, I, decltype(adl_ViewBase(BaseViewer<D, I> {}), void())> : integral_constant<size_t, NumBases<D, Unique, I + 1, void>::value> {
-//    };
-
-//    template <typename D, typename B>
-//    struct BaseInserter : BaseWriter<D, NumBases<D, B>::value, B> {
-//    };
-
-//    template <typename T>
-//    constexpr void adl_RegisterBases(void*) { } // A dummy ADL target.
-
-//    template <typename T>
-//    struct RegisterBases : decltype(adl_RegisterBases<T>((T*)nullptr), tag<void>()) {
-//    };
-
-//    template <typename T, typename I>
-//    struct BaseListLow {
-//    };
-
-//    template <typename T, size_t... I>
-//    struct BaseListLow<T, index_sequence<I...>> {
-//        static constexpr type_list<decltype(adl_ViewBase(BaseViewer<T, I> {}))...> helper() { }
-//        using type = decltype(helper());
-//    };
-
-//    template <typename T>
-//    struct BaseList : BaseListLow<T, make_index_sequence<(impl::RegisterBases<T> {}, NumBases<T, void>::value)>> {
-//    };
-//}
-
-// template <typename T>
-// using base_list = typename impl::BaseList<T>::type;
-
-// template <typename T>
-// struct Base {
-//     template <typename D, typename impl::BaseInserter<D, T>::nonExistent = nullptr>
-//     friend constexpr void adl_RegisterBases(void*) { }
-// };
-
-// struct A : Base<A> {
-// };
-// struct B : Base<B>, A {
-// };
-// struct C : Base<C> {
-// };
-// struct D : Base<D>, B, C {
-// };
-
-// template <typename T>
-// void printType() {
-//#ifndef _MSC_VER
-//     cout << __PRETTY_FUNCTION__ << '\n';
-//#else
-//     cout << __FUNCSIG__ << '\n';
-//#endif
-// };
-// void test() {
-//     static_assert(base_list<D>::size == 4);
-//     printType<base_list<D>>(); // typeList<tag<A>, tag<B>, tag<C>, tag<D>>, order may vary
-// }
-
-}; // xr
-
-template <class T>
-struct Dummy {
-    inline void checkCallback() { }
-};
-
-template <class T>
-struct Callbacks {
-    using Callback = void (*)();
-    // подключить обработчик
-    void attach(EbCallback type, Callback handler) { _callbacks[type] = handler; }
-
-    // отключить обработчик
-    void detach(EbCallback type) { _callbacks[type] = nullptr; }
-
-    // подключить обработчик на количество кликов (может быть только один!)
-    void attachClicks(uint8_t amount, Callback handler) { _amount = amount, _callbacks[13] = handler; }
-
-    // отключить обработчик на количество кликов
-    void detachClicks() { _callbacks[13] = nullptr; }
-
-    // ===================================== CALLBACK =====================================
-    // проверить callback, чтобы не дёргать в прерывании
-    inline void checkCallback() {
-        T* d = static_cast<T*>(this);
-        if (d->turn())
-            d->exec(0);
-        if (d->turnH())
-            d->exec(12);
-        if (d->EBState > 0 && d->EBState <= 8)
-            d->exec(d->EBState);
-        if (d->release())
-            d->exec(10);
-        if (d->hold())
-            d->exec(11);
-        if (d->template checkFlag<T::ClicksGet>()) {
-            d->exec(9);
-            if (d->clicks == d->_amount)
-                d->exec(13);
-        }
-        d->EBState = 0;
-    }
-
-protected:
-    void exec(uint8_t num) {
-        if (_callbacks[num])
-            _callbacks[num]();
-    }
-
-    uint8_t _amount = 0;
-    Callback _callbacks[14] {};
-};
-
-template <uint8_t N, uint8_t Pin, uint8_t... Pins>
-uint8_t pin() { return N == 0 ? Pin : pin<N - 1, Pins...>(); }
-
-template <uint8_t N>
-uint8_t pin() { return 255; }
-
-/*template <typename T, uint8_t... Pins>
-struct ticker {
-    uint8_t tick() {
-        T* d = static_cast<T*>(this);
-        return tickISR(), d->EBState;
-    }
-
-    //    template <xr::enable_if_t<sizeof...(Pins) == 3, uint8_t> = 3>
-    uint8_t tickISR() {
-        T* d = static_cast<T*>(this);
-        if (d->_isrFlag)
-            return d->EBState;
-        d->_isrFlag = 1;
-
-        const uint8_t state = d->fastRead(pin<0, Pins...>()) | (d->fastRead(pin<1, Pins...>()) << 1);
-        d->poolEnc(state);
-
-        d->_btnState = d->fastRead(pin<2, Pins...>());
-        d->poolBtn();
-
-        d->_isrFlag = 0;
-        return d->EBState;
-    }
-
-    //    template <xr::enable_if_t<sizeof...(Pins) == 2, uint8_t> = 2>
-    //    uint8_t tickISR() {
-    //        T* d = static_cast<T*>(this);
-    //        if (d->_isrFlag)
-    //            return d->EBState;
-    //        d->_isrFlag = 1;
-
-    //        const uint8_t state = d->fastRead(pin<0, Pins...>) | (d->fastRead(pin<1, Pins...>) << 1);
-    //        d->poolEnc(state);
-
-    //        d->_isrFlag = 0;
-    //        return d->EBState;
-    //    }
-
-    //    template <xr::enable_if_t<sizeof...(Pins) == 1, uint8_t> = 1>
-    //    uint8_t tickISR() {
-    //        T* d = static_cast<T*>(this);
-    //        if (d->_isrFlag)
-    //            return d->EBState;
-    //        d->_isrFlag = 1;
-
-    //        d->_btnState = fastRead(pin<0, Pins...>);
-    //        d->poolBtn();
-
-    //        d->_isrFlag = 0;
-    //        return d->EBState;
-    //    }
-};*/
-
-struct EB_TICK : xr::false_type {
-    template <typename T, uint8_t... Pins>
-    using type = Dummy<T>;
-};
-
-struct EB_CALLBACK : xr::true_type {
-    template <typename T, uint8_t... Pins>
-    using type = Callbacks<T>;
-};
-
-struct VIRT_BTN : xr::u8_constant<1> {
-    template <typename T>
-    using type = Dummy<T>;
-};
-
-struct VIRT_ENC : xr::u8_constant<2> {
-    template <typename T>
-    using type = Dummy<T>;
-};
-
-struct VIRT_ENCBTN : xr::u8_constant<3> {
-    template <typename T>
-    using type = Dummy<T>;
-};
-
-struct VIRT_BTN_CALLBACK : xr::u8_constant<1> {
-    template <typename T>
-    using type = Callbacks<T>;
-};
-
-struct VIRT_ENC_CALLBACK : xr::u8_constant<2> {
-    template <typename T>
-    using type = Callbacks<T>;
-};
-
-struct VIRT_ENCBTN_CALLBACK : xr::u8_constant<3> {
-    template <typename T>
-    using type = Callbacks<T>;
-};
-
-// ===================================== CLASS =====================================
-template <typename CbMode, uint8_t... Pins>
-class EncButton : public CbMode::template type<EncButton<CbMode, Pins...>> {
-    using CB = typename CbMode::template type<EncButton>;
-    friend CB;
-
-    enum Flags : uint8_t {
-        EncTurn = 0,               // 0 - enc turn
-        EncFast = 1,               // 1 - enc fast
-        EncWasTurn = 2,            // 2 - enc был поворот
-        BtnFlag = 3,               // 3 - флаг кнопки
-        Hold = 4,                  // 4 - hold
-        ClicksFlag = 5,            // 5 - clicks flag
-        ClicksGet = 6,             // 6 - clicks get
-        ClicksGetNum = 7,          // 7 - clicks get num
-        EncButtonHold = 8,         // 8 - enc button hold
-        EncTurnHolded = 9,         // 9 - enc turn holded
-        Released = 10,             // 10 - btn released
-        Btnlevel = 11,             // 11 - btn level
-        BtnReleasedAfterStep = 12, // 12 - btn released after step
-        StepFlag = 13,             // 13 - step flag
-        DebFlag = 14,              // 14 - deb flag
+    template <class T, T v>
+    struct integral_constant {
+        static constexpr T value = v;
+        using value_type = T;
+        using type = integral_constant; // using injected-class-name
+        constexpr operator value_type() const noexcept { return value; }
+        constexpr value_type operator()() const noexcept { return value; }
     };
 
-    enum State : uint8_t { // EBState
-        Idle = 0,          // 0 - idle
-        Left = 1,          // 1 - left
-        Right = 2,         // 2 - right
-        LeftH = 3,         // 3 - leftH
-        RightH = 4,        // 4 - rightH
-        Click = 5,         // 5 - click
-        Held = 6,          // 6 - held
-        Step = 7,          // 7 - step
-        Press = 8,         // 8 - press
+    using true_type = integral_constant<bool, true>;
+    using false_type = integral_constant<bool, false>;
+
+    template <uint8_t V>
+    using u8_constant = integral_constant<uint8_t, V>;
+
+    template <bool PinEncB, class T, class F>
+    struct conditional {
+        typedef T type;
+    };
+
+    template <class T, class F>
+    struct conditional<false, T, F> {
+        typedef F type;
+    };
+
+    template <bool PinEncB, class T, class F>
+    using conditional_t = typename conditional<PinEncB, T, F>::type;
+
+    template <bool PinEncB, class T = void>
+    struct enable_if {
+    };
+
+    template <class T>
+    struct enable_if<true, T> {
+        typedef T type;
+    };
+
+    template <bool PinEncB, class T = void>
+    using enable_if_t = typename enable_if<PinEncB, T>::type;
+
+    bool fastRead(const uint8_t pin) {
+#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
+        if (pin < 8)
+            return bitRead(PIND, pin);
+        else if (pin < 14)
+            return bitRead(PINB, pin - 8);
+        else if (pin < 20)
+            return bitRead(PINC, pin - 14);
+#elif defined(__AVR_ATtiny85__) || defined(__AVR_ATtiny13__)
+        return bitRead(PINB, pin);
+#else
+        return digitalRead(pin);
+#endif
+    }
+
+}; // namespace xr
+
+enum : uint8_t {
+    CompileTime = 0,
+    Button = 1,
+    Encoder = 2,
+    Virtual = 4,
+    UseCallback = 128,
+};
+
+using EB_TICK = xr::u8_constant<CompileTime>;
+using EB_CALLBACK = xr::u8_constant<UseCallback>;
+
+using EB_BTN = xr::u8_constant<Button>;
+using EB_ENC = xr::u8_constant<Encoder>;
+using EB_ENCBTN = xr::u8_constant<Button + Encoder>;
+
+using EB_VIRT_BTN = xr::u8_constant<Button + Virtual>;
+using EB_VIRT_ENC = xr::u8_constant<Encoder + Virtual>;
+using EB_VIRT_ENCBTN = xr::u8_constant<Button + Encoder + Virtual>;
+
+/////////////////////////////////////////////////////////////////////////////////////
+template <typename Derived, typename Mode, uint8_t...>
+struct Tick;
+
+template <typename Derived>
+struct Callbacks;
+
+// ===================================== CLASS =====================================
+template <typename Mode, typename UseCallback = xr::u8_constant<0>, uint8_t... Pins>
+class EncButton : public xr::conditional_t<UseCallback::value >= 128, Callbacks<EncButton<Mode, UseCallback, Pins...>>, Callbacks<void>>,
+                  public Tick<EncButton<Mode, UseCallback, Pins...>, Mode, Pins...>,
+                  Mode //
+{
+    using mode = Mode;
+    using CB = xr::conditional_t<UseCallback::value >= 128, Callbacks<EncButton>, Callbacks<void>>;
+    friend CB;
+
+    using TT = Tick<EncButton, Mode, Pins...>;
+    friend TT;
+    using TT::TT;
+
+    enum Flags : uint8_t {
+        EncTurn,              // 0 - enc turn
+        EncFast,              // 1 - enc fast
+        EncWasTurn,           // 2 - enc был поворот
+        BtnFlag,              // 3 - флаг кнопки
+        Hold,                 // 4 - hold
+        ClicksFlag,           // 5 - clicks flag
+        ClicksGet,            // 6 - clicks get
+        ClicksGetNum,         // 7 - clicks get num
+        EncButtonHold,        // 8 - enc button hold
+        EncTurnHolded,        // 9 - enc turn holded
+        Released,             // 10 - btn released
+        Btnlevel,             // 11 - btn level
+        BtnReleasedAfterStep, // 12 - btn released after step
+        StepFlag,             // 13 - step flag
+        DebFlag,              // 14 - deb flag
+    };
+
+    enum State : uint8_t {
+        // EBState
+        Idle,   // 0 - idle
+        Left,   // 1 - left
+        Right,  // 2 - right
+        LeftH,  // 3 - leftH
+        RightH, // 4 - rightH
+        Click,  // 5 - click
+        Held,   // 6 - held
+        Step,   // 7 - step
+        Press,  // 8 - press
     };
 
 public:
     using type = EncButton;
-
-    // можно указать режим работы пина
-    EncButton(const uint8_t mode = INPUT_PULLUP) {
-        if (sizeof...(Pins) && mode == INPUT_PULLUP)
-            pullUp();
-        setButtonLevel(LOW);
-    }
-
-    // подтянуть пины внутренней подтяжкой
-    void pullUp() {
-        (pinMode(Pins, INPUT_PULLUP), ...);
-        //        if (S1 < 252) { // реальное устройство
-        //            if (S2 == EB_NO_PIN) { // обычная кнопка
-        //                pinMode(S1, INPUT_PULLUP);
-        //            } else if (KEY == EB_NO_PIN) { // энк без кнопки
-        //                pinMode(S1, INPUT_PULLUP);
-        //                pinMode(S2, INPUT_PULLUP);
-        //            } else { // энк с кнопкой
-        //                pinMode(S1, INPUT_PULLUP);
-        //                pinMode(S2, INPUT_PULLUP);
-        //                pinMode(KEY, INPUT_PULLUP);
-        //            }
-        //        }
-    }
 
     // установить таймаут удержания кнопки для isHold(), мс (до 30 000)
     void setHoldTimeout(int tout) {
@@ -470,69 +228,21 @@ public:
 
     // виртуально зажать кнопку энкодера
     void holdEncButton(bool state) {
-        (state) ? setFlag(EncButtonHold)
-                : clrFlag(EncButtonHold);
+        state ? setFlag(EncButtonHold) : clrFlag(EncButtonHold);
     }
 
     // уровень кнопки: LOW - кнопка подключает GND (умолч.), HIGH - кнопка подключает VCC
     void setButtonLevel(bool level) {
-        (level) ? clrFlag(Btnlevel)
-                : setFlag(Btnlevel);
+        level ? clrFlag(Btnlevel) : setFlag(Btnlevel);
     }
 
     // ===================================== TICK =====================================
     // тикер, вызывать как можно чаще
     // вернёт отличное от нуля значение, если произошло какое то событие
-    template <xr::enable_if_t<sizeof...(Pins) == 3, bool> = true>
-    uint8_t tick() {
-        tickISR();
-        CB::checkCallback();
-        return EBState;
-    }
-
-    template <xr::enable_if_t<sizeof...(Pins) == 2, bool> = true>
-    uint8_t tick() {
-        tickISR();
-        CB::checkCallback();
-        return EBState;
-    }
+    //    uint8_t tick();
 
     // тикер специально для прерывания, не проверяет коллбэки
-
-    template <xr::enable_if_t<sizeof...(Pins) == 3, bool> = true>
-    uint8_t tickISR() {
-        if (!_isrFlag) {
-            _isrFlag = 1;
-
-            //            // обработка энка (компилятор вырежет блок если не используется)
-            //            // если объявлены два пина или выбран вирт. энкодер или энкодер с кнопкой
-            //            if ((S1 < 252 && S2 < 252) || S1 == VIRT_ENC || S1 == VIRT_ENCBTN) {
-            //                uint8_t state;
-            //                if (S1 >= 252)
-            //                    state = s1 | (s2 << 1); // получаем код
-            //                else
-            //                    state = fastRead(S1) | (fastRead(S2) << 1); // получаем код
-            //                poolEnc(state);
-            //            }
-
-            //            // обработка кнопки (компилятор вырежет блок если не используется)
-            //            // если S2 не указан (кнопка) или указан KEY или выбран вирт. энкодер с кнопкой или кнопка
-            //            if ((S1 < 252 && S2 == EB_NO_PIN) || KEY != EB_NO_PIN || S1 == VIRT_BTN || S1 == VIRT_ENCBTN) {
-            //                if (S1 < 252 && S2 == EB_NO_PIN)
-            //                    _btnState = fastRead(S1); // обычная кнопка
-            //                if (KEY != EB_NO_PIN)
-            //                    _btnState = fastRead(KEY); // энк с кнопкой
-            //                if (S1 == VIRT_BTN)
-            //                    _btnState = s1; // вирт кнопка
-            //                if (S1 == VIRT_ENCBTN)
-            //                    _btnState = key;             // вирт энк с кнопкой
-            //                _btnState ^= readFlag(Btnlevel); // инверсия кнопки
-            //                poolBtn();
-            //            }
-        }
-        _isrFlag = 0;
-        return EBState;
-    }
+    //    uint8_t tickISR(...); {
 
     // ===================================== CALLBACK =====================================
     // проверить callback, чтобы не дёргать в прерывании
@@ -540,7 +250,7 @@ public:
 
     // ===================================== STATUS =====================================
     uint8_t getState() { return EBState; } // получить статус
-    void resetState() { EBState = 0; }     // сбросить статус
+    void resetState() { EBState = {}; }    // сбросить статус
 
     // ======================================= ENC =======================================
     bool left() { return checkState(Left); }     // поворот влево
@@ -575,44 +285,27 @@ public:
     bool hasClicks(uint8_t num) { return (clicks == num && checkFlag<ClicksGetNum>()) ? 1 : 0; } // имеются клики
     uint8_t hasClicks() { return checkFlag<ClicksGet>() ? clicks : 0; }                          // имеются клики
 
-    // ===================================================================================
     // =================================== DEPRECATED ====================================
-    bool isStep() { return step(); }
-    bool isHold() { return hold(); }
-    bool isHolded() { return held(); }
-    bool isHeld() { return held(); }
-    bool isClick() { return click(); }
-    bool isRelease() { return release(); }
-    bool isPress() { return press(); }
-    bool isTurnH() { return turnH(); }
-    bool isTurn() { return turn(); }
-    bool isFast() { return fast(); }
-    bool isLeftH() { return leftH(); }
-    bool isRightH() { return rightH(); }
-    bool isLeft() { return left(); }
-    bool isRight() { return right(); }
+    [[deprecated("Use step()")]] bool isStep() { return step(); }
+    [[deprecated("Use hold()")]] bool isHold() { return hold(); }
+    [[deprecated("Use held()")]] bool isHolded() { return held(); }
+    [[deprecated("Use held()")]] bool isHeld() { return held(); }
+    [[deprecated("Use click()")]] bool isClick() { return click(); }
+    [[deprecated("Use release()")]] bool isRelease() { return release(); }
+    [[deprecated("Use press()")]] bool isPress() { return press(); }
+    [[deprecated("Use turnH()")]] bool isTurnH() { return turnH(); }
+    [[deprecated("Use turn()")]] bool isTurn() { return turn(); }
+    [[deprecated("Use fast()")]] bool isFast() { return fast(); }
+    [[deprecated("Use leftH()")]] bool isLeftH() { return leftH(); }
+    [[deprecated("Use rightH()")]] bool isRightH() { return rightH(); }
+    [[deprecated("Use left()")]] bool isLeft() { return left(); }
+    [[deprecated("Use right()")]] bool isRight() { return right(); }
 
     // ===================================== PRIVATE =====================================
 private:
-    bool fastRead(const uint8_t pin) {
-#if defined(__AVR_ATmega328P__) || defined(__AVR_ATmega168__)
-        if (pin < 8)
-            return bitRead(PIND, pin);
-        else if (pin < 14)
-            return bitRead(PINB, pin - 8);
-        else if (pin < 20)
-            return bitRead(PINC, pin - 14);
-#elif defined(__AVR_ATtiny85__) || defined(__AVR_ATtiny13__)
-        return bitRead(PINB, pin);
-#else
-        return digitalRead(pin);
-#endif
-        return 0;
-    }
-
     // ===================================== POOL ENC =====================================
     void poolEnc(uint8_t state) {
-#ifdef EB_BETTER_ENC_
+#ifdef EB_BETTER_ENC
         static constexpr int8_t _EB_DIR[] = {
             0, -1, 1, 0,
             1, 0, 0, -1,
@@ -631,7 +324,7 @@ private:
 #endif
                 EBState = (_ecount < 0) ? 1 : 2;
                 _ecount = 0;
-                if (sizeof...(Pins) == 3) { // энкодер с кнопкой
+                if (sizeof...(Pins) == 3 || (Mode::value & 3) == 3) { // энкодер с кнопкой
                     if (!readFlag(Hold) && (_btnState || readFlag(EncButtonHold)))
                         EBState += 2; // если кнопка не "удерживается"
                 }
@@ -650,7 +343,7 @@ private:
         }
 #else
         if (_encRST && state == 0b11) {                              // ресет и энк защёлкнул позицию
-            if (sizeof...(Pins) == 3) {                              // энкодер с кнопкой
+            if (sizeof...(Pins) == 3 || (Mode::value & 3) == 3) {    // энкодер с кнопкой
                 if ((_prev == 1 || _prev == 2) && !readFlag(Hold)) { // если кнопка не "удерживается" и энкодер в позиции 1 или 2
                     EBState = _prev;
                     if (_btnState || readFlag(EncButtonHold))
@@ -686,8 +379,8 @@ private:
     // ===================================== POOL BTN =====================================
     void poolBtn() {
         _btnState ^= readFlag(Btnlevel);
-        uint32_t thisMls = millis();
-        uint32_t debounce = thisMls - _debTimer;
+        const uint32_t thisMls = millis();
+        const uint32_t debounce = thisMls - _debTimer;
         if (_btnState) {                     // кнопка нажата
             if (!readFlag(BtnFlag)) {        // и не была нажата ранее
                 if (readFlag(DebFlag)) {     // ждём дебаунс
@@ -762,9 +455,9 @@ private:
 
     uint8_t EBState : 4;
     uint8_t _prev : 2;
+    bool _isrFlag : 1;
     bool _btnState : 1;
     bool _encRST : 1;
-    bool _isrFlag : 1;
     uint16_t flags = 0;
 
 #ifdef EB_BETTER_ENC
@@ -774,6 +467,418 @@ private:
     uint32_t _debTimer = 0;
     uint8_t _holdT = (EB_HOLD >> 7);
     int8_t _dir = 0;
+};
+
+template <typename Derived>
+struct GetDerived {
+protected:
+    Derived* d() { return static_cast<Derived*>(this); }
+};
+
+/////////////////////////////////////////////////////////////////////////////////////
+/// \brief Compiletime Pin defined Tick structures
+///
+template <typename Derived, typename Mode, uint8_t PinEncA, uint8_t PinEncB, uint8_t PinBtn>
+struct Tick<Derived, Mode, PinEncA, PinEncB, PinBtn> {
+
+    // можно указать режим работы пина
+    Tick(const uint8_t mode = INPUT_PULLUP) {
+        if (mode == INPUT_PULLUP)
+            pullUp();
+        d()->setButtonLevel(LOW);
+    }
+
+    // подтянуть пины внутренней подтяжкой
+    void pullUp() { pinMode(PinEncA, INPUT_PULLUP), pinMode(PinEncB, INPUT_PULLUP), pinMode(PinBtn, INPUT_PULLUP); }
+
+    // ===================================== TICK =====================================
+    // тикер, вызывать как можно чаще
+    // вернёт отличное от нуля значение, если произошло какое то событие
+
+    uint8_t tick() {
+
+        tickISR();
+        d()->checkCallback();
+        return d()->EBState;
+    }
+
+    // тикер специально для прерывания, не проверяет коллбэки
+    uint8_t tickISR() {
+        if (!d()->_isrFlag) {
+            d()->_isrFlag = 1;
+            d()->poolEnc(xr::fastRead(PinEncA) | (xr::fastRead(PinEncB) << 1));
+            d()->_btnState = xr::fastRead(PinBtn);
+            d()->poolBtn();
+        }
+        d()->_isrFlag = 0;
+        return d()->EBState;
+    }
+
+private:
+    Derived* d() { return static_cast<Derived*>(this); }
+};
+
+template <typename Derived, typename Mode, uint8_t PinEncA, uint8_t PinEncB>
+struct Tick<Derived, Mode, PinEncA, PinEncB> {
+    // можно указать режим работы пина
+    Tick(const uint8_t mode = INPUT_PULLUP) {
+        if (mode == INPUT_PULLUP)
+            pullUp();
+        d()->setButtonLevel(LOW);
+    }
+
+    // подтянуть пины внутренней подтяжкой
+    void pullUp() { pinMode(PinEncA, INPUT_PULLUP), pinMode(PinEncB, INPUT_PULLUP); }
+
+    // ===================================== TICK =====================================
+    // тикер, вызывать как можно чаще
+    // вернёт отличное от нуля значение, если произошло какое то событие
+    uint8_t tick() {
+
+        tickISR();
+        d()->checkCallback();
+        return d()->EBState;
+    }
+
+    // тикер специально для прерывания, не проверяет коллбэки
+    uint8_t tickISR() {
+
+        if (!d()->_isrFlag) {
+            d()->_isrFlag = 1;
+            d()->poolEnc(xr::fastRead(PinEncA) | (xr::fastRead(PinEncB) << 1));
+        }
+        d()->_isrFlag = 0;
+        return d()->EBState;
+    }
+
+private:
+    Derived* d() { return static_cast<Derived*>(this); }
+};
+
+template <typename Derived, typename Mode, uint8_t PinBtn>
+struct Tick<Derived, Mode, PinBtn> {
+    // можно указать режим работы пина
+    Tick(const uint8_t mode = INPUT_PULLUP) {
+        if (mode == INPUT_PULLUP)
+            pullUp();
+        d()->setButtonLevel(LOW);
+    }
+
+    // подтянуть пины внутренней подтяжкой
+    void pullUp() { pinMode(PinBtn, INPUT_PULLUP); }
+
+    // ===================================== TICK =====================================
+    // тикер, вызывать как можно чаще
+    // вернёт отличное от нуля значение, если произошло какое то событие
+    uint8_t tick() {
+
+        tickISR();
+        d()->checkCallback();
+        return d()->EBState;
+    }
+
+    // тикер специально для прерывания, не проверяет коллбэки
+    uint8_t tickISR() {
+
+        if (!d()->_isrFlag) {
+            d()->_isrFlag = 1;
+            d()->_btnState = xr::fastRead(PinBtn);
+            d()->poolBtn();
+        }
+        d()->_isrFlag = 0;
+        return d()->EBState;
+    }
+
+private:
+    Derived* d() { return static_cast<Derived*>(this); }
+};
+/////////////////////////////////////////////////////////////////////////////////////
+/// \brief Runtime Pin defined Tick structures
+template <typename Derived>
+struct Tick<Derived, EB_ENCBTN> {
+
+    Tick(uint8_t PinEncA, uint8_t PinEncB, uint8_t PinBtn, uint8_t mode = INPUT) {
+        d()->setButtonLevel(LOW);
+        setPins(mode, PinEncA, PinEncB, PinBtn);
+    }
+
+    // установить пины
+    void setPins(uint8_t PinEncA, uint8_t PinEncB, uint8_t PinBtn, uint8_t mode = INPUT) {
+        pinMode(PinEncA, mode);
+        pinMode(PinEncB, mode);
+        pinMode(PinBtn, mode);
+        _pins[0] = PinEncA;
+        _pins[1] = PinEncB;
+        _pins[2] = PinBtn;
+    }
+
+    // подтянуть пины внутренней подтяжкой
+    void pullUp() { pinMode(_pins[0], INPUT_PULLUP), pinMode(_pins[1], INPUT_PULLUP), pinMode(_pins[2], INPUT_PULLUP); }
+
+    // ===================================== TICK =====================================
+    // тикер, вызывать как можно чаще
+    // вернёт отличное от нуля значение, если произошло какое то событие
+    uint8_t tick() {
+
+        tickISR();
+        d()->checkCallback();
+        return d()->EBState;
+    }
+
+    // тикер специально для прерывания, не проверяет коллбэки
+    uint8_t tickISR() {
+        if (!d()->_isrFlag) {
+            d()->_isrFlag = 1;
+            d()->poolEnc(xr::fastRead(_pins[0]) | (xr::fastRead(_pins[1]) << 1));
+            d()->_btnState = xr::fastRead(_pins[2]);
+            d()->poolBtn();
+        }
+        d()->_isrFlag = 0;
+        return d()->EBState;
+    }
+
+private:
+    Derived* d() { return static_cast<Derived*>(this); }
+    uint8_t _pins[Button + Encoder];
+};
+
+template <typename Derived>
+struct Tick<Derived, EB_ENC> {
+
+    Tick(uint8_t PinEncA, uint8_t PinEncB, uint8_t mode = INPUT) {
+        d()->setButtonLevel(LOW);
+        setPins(mode, PinEncA, PinEncB);
+    }
+
+    // установить пины
+    void setPins(uint8_t PinEncA, uint8_t PinEncB, uint8_t mode = INPUT) {
+        pinMode(PinEncA, mode);
+        pinMode(PinEncB, mode);
+        _pins[0] = PinEncA;
+        _pins[1] = PinEncB;
+    }
+
+    // подтянуть пины внутренней подтяжкой
+    void pullUp() { pinMode(_pins[0], INPUT_PULLUP), pinMode(_pins[1], INPUT_PULLUP); }
+
+    // ===================================== TICK =====================================
+    // тикер, вызывать как можно чаще
+    // вернёт отличное от нуля значение, если произошло какое то событие
+
+    uint8_t tick() {
+
+        tickISR();
+        d()->checkCallback();
+        return d()->EBState;
+    }
+
+    // тикер специально для прерывания, не проверяет коллбэки
+    uint8_t tickISR() {
+        if (!d()->_isrFlag) {
+            d()->_isrFlag = 1;
+            d()->poolEnc(xr::fastRead(_pins[0]) | (xr::fastRead(_pins[1]) << 1));
+        }
+        d()->_isrFlag = 0;
+        return d()->EBState;
+    }
+
+private:
+    Derived* d() { return static_cast<Derived*>(this); }
+    uint8_t _pins[Encoder];
+};
+
+template <typename Derived>
+struct Tick<Derived, EB_BTN> {
+    Tick(uint8_t PinBtn, uint8_t mode = INPUT) {
+        d()->setButtonLevel(LOW);
+        setPins(mode, PinBtn);
+    }
+
+    // установить пины
+    void setPins(uint8_t PinBtn, uint8_t mode = INPUT) {
+        pinMode(PinBtn, mode);
+        _pin = PinBtn;
+    }
+
+    // подтянуть пины внутренней подтяжкой
+    void pullUp() { pinMode(_pin, INPUT_PULLUP); }
+
+    // ===================================== TICK =====================================
+    // тикер, вызывать как можно чаще
+    // вернёт отличное от нуля значение, если произошло какое то событие
+
+    uint8_t tick() {
+
+        tickISR();
+        d()->checkCallback();
+        return d()->EBState;
+    }
+
+    // тикер специально для прерывания, не проверяет коллбэки
+    uint8_t tickISR() {
+        if (!d()->_isrFlag) {
+            d()->_isrFlag = 1;
+            d()->_btnState = xr::fastRead(_pin);
+            d()->poolBtn();
+        }
+        d()->_isrFlag = 0;
+        return d()->EBState;
+    }
+
+private:
+    Derived* d() { return static_cast<Derived*>(this); }
+    uint8_t _pin;
+};
+
+/////////////////////////////////////////////////////////////////////////////////////
+/// \brief Virtual Pin defined Tick structures
+template <typename Derived>
+struct Tick<Derived, EB_VIRT_ENCBTN> {
+
+    Tick() {
+        d()->setButtonLevel(LOW);
+    }
+
+    // ===================================== TICK =====================================
+    // тикер, вызывать как можно чаще
+    // вернёт отличное от нуля значение, если произошло какое то событие
+    uint8_t tick(uint8_t PinEncA, uint8_t PinEncB, uint8_t PinBtn) {
+        tickISR(PinEncA, PinEncB, PinBtn);
+        d()->checkCallback();
+        return d()->EBState;
+    }
+
+    // тикер специально для прерывания, не проверяет коллбэки
+    uint8_t tickISR(uint8_t PinEncA, uint8_t PinEncB, uint8_t PinBtn) {
+        if (!d()->_isrFlag) {
+            d()->_isrFlag = 1;
+            d()->poolEnc(xr::fastRead(PinEncA) | (xr::fastRead(PinEncB) << 1));
+            d()->_btnState = xr::fastRead(PinBtn);
+            d()->poolBtn();
+        }
+        d()->_isrFlag = 0;
+        return d()->EBState;
+    }
+
+private:
+    Derived* d() { return static_cast<Derived*>(this); }
+};
+
+template <typename Derived>
+struct Tick<Derived, EB_VIRT_ENC> {
+    Tick() {
+        d()->setButtonLevel(LOW);
+    }
+
+    // ===================================== TICK =====================================
+    // тикер, вызывать как можно чаще
+    // вернёт отличное от нуля значение, если произошло какое то событие
+
+    uint8_t tick(uint8_t PinEncA, uint8_t PinEncB) {
+        tickISR(PinEncA, PinEncB);
+        d()->checkCallback();
+        return d()->EBState;
+    }
+
+    // тикер специально для прерывания, не проверяет коллбэки
+    uint8_t tickISR(uint8_t PinEncA, uint8_t PinEncB) {
+        if (!d()->_isrFlag) {
+            d()->_isrFlag = 1;
+            d()->poolEnc(xr::fastRead(PinEncA) | (xr::fastRead(PinEncB) << 1));
+        }
+        d()->_isrFlag = 0;
+        return d()->EBState;
+    }
+
+private:
+    Derived* d() { return static_cast<Derived*>(this); }
+};
+
+template <typename Derived>
+struct Tick<Derived, EB_VIRT_BTN> {
+    Tick() {
+        d()->setButtonLevel(LOW);
+    }
+
+    // ===================================== TICK =====================================
+    // тикер, вызывать как можно чаще
+    // вернёт отличное от нуля значение, если произошло какое то событие
+
+    uint8_t tick(uint8_t PinBtn) {
+        tickISR(PinBtn);
+        d()->checkCallback();
+        return d()->EBState;
+    }
+
+    // тикер специально для прерывания, не проверяет коллбэки
+    uint8_t tickISR(uint8_t PinBtn) {
+        if (!d()->_isrFlag) {
+            d()->_isrFlag = 1;
+            d()->_btnState = xr::fastRead(PinBtn);
+            d()->poolBtn();
+        }
+        d()->_isrFlag = 0;
+        return d()->EBState;
+    }
+
+private:
+    Derived* d() { return static_cast<Derived*>(this); }
+};
+
+/////////////////////////////////////////////////////////////////////////////////////
+/// \brief The Callbacks struct
+///
+template <class Derived>
+struct Callbacks {
+    using Callback = void (*)();
+    // подключить обработчик
+    void attach(EbCallback type, Callback handler) { _callbacks[type] = handler; }
+
+    // отключить обработчик
+    void detach(EbCallback type) { _callbacks[type] = nullptr; }
+
+    // подключить обработчик на количество кликов (может быть только один!)
+    void attachClicks(uint8_t amount, Callback handler) { _amount = amount, _callbacks[13] = handler; }
+
+    // отключить обработчик на количество кликов
+    void detachClicks() { _callbacks[13] = nullptr; }
+
+    // ===================================== CALLBACK =====================================
+    // проверить callback, чтобы не дёргать в прерывании
+    inline void checkCallback() {
+        if (d()->turn())
+            d()->exec(TURN_HANDLER);
+        if (d()->turnH())
+            d()->exec(TURN_H_HANDLER);
+        if (d()->EBState > 0 && d()->EBState <= 8)
+            d()->exec(EbCallback(d()->EBState));
+        if (d()->release())
+            d()->exec(RELEASE_HANDLER);
+        if (d()->hold())
+            d()->exec(HOLD_HANDLER);
+        if (d()->template checkFlag<Derived::ClicksGet>()) {
+            d()->exec(CLICKS_HANDLER);
+            if (d()->clicks == d()->_amount)
+                d()->exec(EbCallback(13)); // CLICKS_AMOUNT
+        }
+        d()->EBState = 0;
+    }
+
+private:
+    Derived* d() { return static_cast<Derived*>(this); }
+
+    void exec(EbCallback num) {
+        if (_callbacks[num])
+            _callbacks[num]();
+    }
+
+    uint8_t _amount = 0;
+    Callback _callbacks[14] {};
+};
+
+template <>
+struct Callbacks<void> {
+    inline void checkCallback() { }
 };
 
 #endif
