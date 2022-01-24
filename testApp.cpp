@@ -1,39 +1,71 @@
-// пример с библиотекой EncButton2
 
-// Опциональные дефайн-настройки (показаны по умолчанию)
-//#define EB_FAST 30     // таймаут быстрого поворота, мс
-//#define EB_DEB 50      // дебаунс кнопки, мс
-//#define EB_HOLD 1000   // таймаут удержания кнопки, мс
-//#define EB_STEP 500    // период срабатывания степ, мс
-//#define EB_CLICK 400   // таймаут накликивания, мс
-
-//#include <EncButton.h>
-#include <EncButton2.h>
-
+#define New_
+#define TEST_MODE 1
 enum {
     A = 10,
     B = 11,
     BT = 2
 };
 
-/*
-Data:        356 bytes (17.4% Full)
-Program:    4658 bytes (14.2% Full)
+#if TEST_MODE == 3
+#ifdef New
+#include <EncButton.h>
+EncButton<EB_ENCBTN> enc(A, B, BT, INPUT); // энкодер с кнопкой
 
-Data:        356 bytes (17.4% Full)
-Program:    4748 bytes (14.5% Full)
-*/
+//Program:    4648 bytes (14.2% Full)
+//(.text + .data + .bootloader)
+//Data:        356 bytes (17.4% Full)
+//(.data + .bss + .noinit)
+#else
+#include <EncButton2.h>
+EncButton2<EB_ENCBTN> enc(INPUT, A, B, BT); // энкодер с кнопкой
 
-EncButton2<EB_ENCBTN> enc(A, B, BT, INPUT); // энкодер с кнопкой
-//EncButton2<EB_ENCBTN> enc(A, B, BT, INPUT); // энкодер с кнопкой
+//Program:    4750 bytes (14.5% Full)
+//(.text + .data + .bootloader)
+//Data:        356 bytes (17.4% Full)
+//(.data + .bss + .noinit)
+#endif
+#endif
 
-// EncButton2<EB_ENC> enc(INPUT, 2, 3);        // просто энкодер
-// EncButton2<EB_BTN> enc(INPUT, 4);           // просто кнопка
-//  для изменения направления энкодера поменяй A и B при инициализации
+#if TEST_MODE == 2
+#ifdef New
+#include <EncButton.h>
+EncButton<EB_ENC> enc(A, B, INPUT); // энкодер с кнопкой
 
-// по умолчанию пины настроены в INPUT_PULLUP
-// Если используется внешняя подтяжка - лучше перевести в INPUT
-// EncButton<EB_TICK, 2, 3, 4> enc(INPUT);
+//Program:    3802 bytes (11.6% Full)
+//(.text + .data + .bootloader)
+//Data:        281 bytes (13.7% Full)
+//(.data + .bss + .noinit)
+#else
+#include <EncButton2.h>
+EncButton2<EB_ENC> enc(INPUT, A, B); // энкодер с кнопкой
+
+//Program:    3852 bytes (11.8% Full)
+//(.text + .data + .bootloader)
+//Data:        281 bytes (13.7% Full)
+//(.data + .bss + .noinit)
+#endif
+#endif
+
+#if TEST_MODE == 1
+#ifdef New
+#include <EncButton.h>
+EncButton<EB_BTN> enc(BT, INPUT); // энкодер с кнопкой
+
+//Program:    4298 bytes (13.1% Full)
+//(.text + .data + .bootloader)
+//Data:        355 bytes (17.3% Full)
+//(.data + .bss + .noinit)
+#else
+#include <EncButton2.h>
+EncButton2<EB_BTN> enc(INPUT, BT); // энкодер с кнопкой
+
+//Program:    4370 bytes (13.3% Full)
+//(.text + .data + .bootloader)
+//Data:        355 bytes (17.3% Full)
+//(.data + .bss + .noinit)
+#endif
+#endif
 
 void setup() {
     Serial.begin(9600);
@@ -89,7 +121,7 @@ void loop() {
     // if (enc.hold()) Serial.println("hold");   // будет постоянно возвращать true после удержания
     if (enc.step())
         Serial.println("step"); // импульсное удержание
-
+#if TEST_MODE == 3 || TEST_MODE == 1
     // проверка на количество кликов
     if (enc.hasClicks(1))
         Serial.println("action 1 clicks");
@@ -105,79 +137,84 @@ void loop() {
         Serial.print("has clicks ");
         Serial.println(enc.clicks);
     }
+#endif
 }
 
-//#include <EncButton.h>
+#if 0
 
-// enum {
-//     A = 10,
-//     B = 11,
-//     BT = 2
-// };
+#include <EncButton.h>
 
-// EncButton<EB_CALLBACK, A, B, BT> enc;
-////EncButton<EB_CALLBACK, A, B> enc;
-////EncButton<EB_CALLBACK, BT> enc;
+enum {
+    A = 10,
+    B = 11,
+    BT = 2
+};
 
-// void CLICK() { Serial.println(__FUNCTION__); }
-// void CLICKS() { Serial.println(__FUNCTION__), Serial.println(enc.clicks); }
-// void HOLD() { Serial.println(__FUNCTION__); }
-// void HOLDED() { Serial.println(__FUNCTION__); }
-// void LEFT() { Serial.println(__FUNCTION__); }
-// void LEFT_H() { Serial.println(__FUNCTION__); }
-// void PRESS() { Serial.println(__FUNCTION__); }
-// void RELEASE() { Serial.println(__FUNCTION__); }
-// void RIGHT() { Serial.println(__FUNCTION__); }
-// void RIGHT_H() { Serial.println(__FUNCTION__); }
-// void STEP() { Serial.println(__FUNCTION__); }
-// void TURN() { Serial.println(__FUNCTION__), Serial.println(enc.counter), Serial.println(enc.fast()); }
-// void TURN_H() { Serial.println(__FUNCTION__), Serial.println(enc.getDir()), Serial.println(enc.fast()); }
-// void CLICKS_5() { Serial.println(__FUNCTION__), Serial.println(enc.clicks); }
+//EncButton<EB_PERMANENT, EB_CALLBACK, A, B, BT> enc;
+//EncButton<EB_CALLBACK, A, B> enc;
+EncButton<EB_PERMANENT, EB_CALLBACK, BT> enc;
 
-// void setup() {
-//     Serial.begin(9600);
+void CLICK() { Serial.println(__FUNCTION__); }
+void CLICKS() { Serial.println(__FUNCTION__), Serial.println(enc.clicks); }
+void HOLD() { Serial.println(__FUNCTION__); }
+void HOLDED() { Serial.println(__FUNCTION__); }
+void LEFT() { Serial.println(__FUNCTION__); }
+void LEFT_H() { Serial.println(__FUNCTION__); }
+void PRESS() { Serial.println(__FUNCTION__); }
+void RELEASE() { Serial.println(__FUNCTION__); }
+void RIGHT() { Serial.println(__FUNCTION__); }
+void RIGHT_H() { Serial.println(__FUNCTION__); }
+void STEP() { Serial.println(__FUNCTION__); }
+//void TURN() { Serial.println(__FUNCTION__), Serial.println(enc.counter), Serial.println(enc.fast()); }
+void TURN_H() { Serial.println(__FUNCTION__), Serial.println(enc.getDir()), Serial.println(enc.fast()); }
+void CLICKS_5() { Serial.println(__FUNCTION__), Serial.println(enc.clicks); }
 
-//    enc.attach(CLICKS_HANDLER, CLICKS);
-//    enc.attach(CLICK_HANDLER, CLICK);
-//    enc.attach(HOLDED_HANDLER, HOLDED);
-//    enc.attach(HOLD_HANDLER, HOLD);
-//    enc.attach(LEFT_HANDLER, LEFT);
-//    enc.attach(LEFT_H_HANDLER, LEFT_H);
-//    enc.attach(PRESS_HANDLER, PRESS);
-//    enc.attach(RELEASE_HANDLER, RELEASE);
-//    enc.attach(RIGHT_HANDLER, RIGHT);
-//    enc.attach(RIGHT_H_HANDLER, RIGHT_H);
-//    enc.attach(STEP_HANDLER, STEP);
+void setup() {
+    Serial.begin(9600);
+
+    enc.attach(CLICKS_HANDLER, CLICKS);
+    enc.attach(CLICK_HANDLER, CLICK);
+    enc.attach(HOLDED_HANDLER, HOLDED);
+    enc.attach(HOLD_HANDLER, HOLD);
+    enc.attach(LEFT_HANDLER, LEFT);
+    enc.attach(LEFT_H_HANDLER, LEFT_H);
+    enc.attach(PRESS_HANDLER, PRESS);
+    enc.attach(RELEASE_HANDLER, RELEASE);
+    enc.attach(RIGHT_HANDLER, RIGHT);
+    enc.attach(RIGHT_H_HANDLER, RIGHT_H);
+    enc.attach(STEP_HANDLER, STEP);
 //    enc.attach(TURN_HANDLER, TURN);
-//    enc.attach(TURN_H_HANDLER, TURN_H);
+    enc.attach(TURN_H_HANDLER, TURN_H);
 
-//    enc.attachClicks(5, CLICKS_5);
-//}
+    enc.attachClicks(5, CLICKS_5);
+}
 
-//// =============== LOOP =============
-// void loop() {
-//     enc.tick(); // обработка всё равно здесь
-// }
+// =============== LOOP =============
+void loop() {
+    enc.tick(); // обработка всё равно здесь
+}
 
-///*
+/*
 
-//Начальное состояние
-// Data:        332 bytes (16.2% Full)
-// Program:    4710 bytes (14.4% Full)
+Начальное состояние
+ Data:        332 bytes (16.2% Full)
+ Program:    4710 bytes (14.4% Full)
 
-//вынес функциональность солбэков в отдельный класс
-// Data:        332 bytes (16.2% Full)
-// Program:    4710 bytes (14.4% Full)
+вынес функциональность солбэков в отдельный класс
+ Data:        332 bytes (16.2% Full)
+ Program:    4710 bytes (14.4% Full)
 
-//флаг макро сделал встроенными методами
-// Data:        332 bytes (16.2% Full)
-// Program:    4676 bytes (14.3% Full)
+флаг макро сделал встроенными методами
+ Data:        332 bytes (16.2% Full)
+ Program:    4676 bytes (14.3% Full)
 
-//заменил магические константы на enum Flags / State
-// Data:        332 bytes (16.2% Full)
-// Program:    4610 bytes (14.1% Full)
+заменил магические константы на enum Flags / State
+ Data:        332 bytes (16.2% Full)
+ Program:    4610 bytes (14.1% Full)
 
-// Data:        333 bytes (16.3% Full)
-// Program:    4612 bytes (14.1% Full)
+ Data:        333 bytes (16.3% Full)
+ Program:    4612 bytes (14.1% Full)
 
-//*/
+*/
+
+#endif

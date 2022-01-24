@@ -14,7 +14,7 @@ CppApplication {
     // property string CORE: 'C:/Users/X-Ray/AppData/Local/Arduino15/packages/MightyCore/hardware/avr/2.1.3/cores/MCUdude_corefiles'
     // property string VARIANT: 'C:/Users/X-Ray/AppData/Local/Arduino15/packages/MightyCore/hardware/avr/2.1.3/variants/standard'
 
-    property string USER: 'X-Ray'
+    property string USER: 'bakiev'//'X-Ray'
     property string CORE: 'C:/Users/'+USER+'/AppData/Local/Arduino15/packages/MightyCore/hardware/avr/2.1.3/cores/MCUdude_corefiles'
     property string VARIANT: 'C:/Users/'+USER+'/AppData/Local/Arduino15/packages/MightyCore/hardware/avr/2.1.3/variants/standard'
     property string ARDUINO_LIB: 'Ваша директория установки библиотек Arduino'
@@ -189,6 +189,7 @@ CppApplication {
 
     Rule {
         inputs: ['application']
+        alwaysRun: true
 
         Artifact
         {
