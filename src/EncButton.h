@@ -326,7 +326,6 @@ private:
 template <typename Derived>
 struct GetDerived {
 protected:
-    Derived& d() { return *static_cast<Derived*>(this); }
 };
 namespace Internals {
 
@@ -527,9 +526,6 @@ namespace Internals {
             D._isrFlag = 0;
             return D.EBState;
         }
-
-    private:
-        Derived& d() { return *static_cast<Derived*>(this); }
     };
 
     template <typename Derived, typename Mode, uint8_t PinEncA, uint8_t PinEncB>
@@ -563,9 +559,6 @@ namespace Internals {
             D._isrFlag = 0;
             return D.EBState;
         }
-
-    private:
-        Derived& d() { return *static_cast<Derived*>(this); }
     };
 
     template <typename Derived, typename Mode, uint8_t PinBtn>
@@ -599,9 +592,6 @@ namespace Internals {
             D._isrFlag = 0;
             return D.EBState;
         }
-
-    private:
-        Derived& d() { return *static_cast<Derived*>(this); }
     };
     /////////////////////////////////////////////////////////////////////////////////////
     /// \brief Runtime Pin defined Tick structures
@@ -648,7 +638,6 @@ namespace Internals {
         }
 
     private:
-        Derived& d() { return *static_cast<Derived*>(this); }
         uint8_t _pins[Button + Encoder];
     };
 
@@ -696,7 +685,6 @@ namespace Internals {
         }
 
     private:
-        Derived& d() { return *static_cast<Derived*>(this); }
         uint8_t _pins[Encoder];
     };
 
@@ -742,7 +730,6 @@ namespace Internals {
         }
 
     private:
-        Derived& d() { return *static_cast<Derived*>(this); }
         uint8_t _pin;
     };
 
@@ -772,9 +759,6 @@ namespace Internals {
             D._isrFlag = 0;
             return D.EBState;
         }
-
-    private:
-        Derived& d() { return *static_cast<Derived*>(this); }
     };
 
     template <typename Derived>
@@ -800,9 +784,6 @@ namespace Internals {
             D._isrFlag = 0;
             return D.EBState;
         }
-
-    private:
-        Derived& d() { return *static_cast<Derived*>(this); }
     };
 
     template <typename Derived>
@@ -828,9 +809,6 @@ namespace Internals {
             D._isrFlag = 0;
             return D.EBState;
         }
-
-    private:
-        Derived& d() { return *static_cast<Derived*>(this); }
     };
 
     /////////////////////////////////////////////////////////////////////////////////////
@@ -873,8 +851,6 @@ namespace Internals {
         }
 
     private:
-        Derived& d() { return *static_cast<Derived*>(this); }
-
         void exec(EbCallback num) {
             if (_callbacks[num])
                 _callbacks[num]();
