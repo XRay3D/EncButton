@@ -224,7 +224,7 @@ class EncButton : public Internals::CallbacksImpl<Internals::conditional_t<UseCa
     using mode = Mode;
 
     using Tick = Internals::Tick<EncButton, Mode, Pins...>;
-    using Tick::Tick;
+    using Tick::Tick; // ADL use base class constructor
     friend Tick;
 
     template <typename Derived>
